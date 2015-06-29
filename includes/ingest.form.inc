@@ -69,21 +69,34 @@ function islandora_basic_collection_get_ingest_configuration(AbstractObject $col
  *   The Drupal form definition.
  * @param array $form_state
  *   The Drupal form state.
+ * @param array $models
+ *   The models to include in the form.
  * @param string $parent_pid
  *   The pid of parent collection.
  *
  * @return array
  *   The Drupal form definition.
  */
-function islandora_basic_collection_select_content_model_form(array $form, array &$form_state, $parent_pid) {
-  $collection = islandora_object_load($parent_pid);
-  $policy = new CollectionPolicy($collection['COLLECTION_POLICY']->content);
-  $models = $policy->getContentModels();
+function islandora_basic_collection_select_content_model_form(array $form, array &$form_state, array $models, $parent_pid = NULL) {
   $options = array();
-  foreach ($models as $pid => $config) {
-    $object = islandora_object_load($pid);
-    $options[$pid] = $config['name'];
+  if ($parent_pid) {
+    $collection = islandora_object_load($parent_pid);
+    $policy = new CollectionPolicy($collection['COLLECTION_POLICY']->content);
+    $cmodels = $policy->getContentModels();
+    foreach ($models as $pid) {
+      $object = islandora_object_load($pid);
+      if ($object) {
+        $options[$pid] = isset($cmodels[$pid]['name']) ? $cmodels[$pid]['name'] : $object->label;
+      }
+    }
   }
+  if (empty($options)) {
+    foreach ($models as $model) {
+      $object = islandora_object_load($model);
+      $options[$model] = $object->label;
+    }
+  }
+
   $model = isset($form_state['values']['models']) ? $form_state['values']['models'] : key($options);
   $shared_storage = &islandora_ingest_form_get_shared_storage($form_state);
   $shared_storage['models'] = array($model);
