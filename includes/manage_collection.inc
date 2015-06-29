@@ -224,6 +224,7 @@ function islandora_basic_collection_create_child_collection_form_submit(array $f
  */
 function islandora_basic_collection_policy_management_form(array $form, array &$form_state, AbstractObject $object) {
   module_load_include('inc', 'islandora', 'includes/utilities');
+  drupal_add_css(drupal_get_path('module', 'islandora_basic_collection') . "/css/collection_policy_table.css");
   $form_state['collection'] = $object;
   $policy = new CollectionPolicy($object['COLLECTION_POLICY']->content);
   $policy_content_models = $policy->getContentModels();
@@ -235,6 +236,11 @@ function islandora_basic_collection_policy_management_form(array $form, array &$
     $content_model_in_policy = isset($policy_content_models[$pid]);
     $namespace = $content_model_in_policy ? $policy_content_models[$pid]['namespace'] : $default_namespace;
     $namespace_element = islandora_basic_collection_get_namespace_form_element($namespace);
+    $prompt_element = array(
+      '#type' => 'textfield',
+      '#size' => 15,
+      '#default_value' => isset($policy_content_models[$pid]) ? $policy_content_models[$pid]['name'] : $content_model['label'],
+      );
     unset($namespace_element['#title'], $namespace_element['#description']);
     $rows[$pid] = array(
       'selected' => array(
@@ -244,6 +250,7 @@ function islandora_basic_collection_policy_management_form(array $form, array &$
       'title' => array(
         '#markup' => l(t('@label (@pid)', array('@label' => $label, '@pid' => $pid)), "islandora/object/{$pid}"),
       ),
+      'prompt' => $prompt_element,
       'namespace' => $namespace_element,
     );
   }
@@ -256,7 +263,12 @@ function islandora_basic_collection_policy_management_form(array $form, array &$
     'table' => array(
       '#tree' => TRUE,
       '#header' => array(
-        array('class' => array('select-all')), t('PID'), 'Namespace',
+        array(
+          'class' => array('select-all')
+        ),
+        'pid' => array('data' => t('PID'), 'class' => "collection_policy_pid"),
+        'prompt' => array('data' => t('Prompt'), 'class' => "collection_policy_prompt"),
+        'namespace' => array('data' => t('Namespace'), 'class' => "collection_policy_namespace"),
       ),
       '#theme' => 'islandora_basic_collection_policy_management_table',
       'rows' => $rows,
@@ -285,7 +297,7 @@ function islandora_basic_collection_policy_management_form_submit(array $form, a
   $policy = CollectionPolicy::emptyPolicy();
   foreach ($selected as $pid => $properties) {
     $content_model = islandora_object_load($pid);
-    $policy->addContentModel($pid, $content_model->label, $properties['namespace']);
+    $policy->addContentModel($pid, $properties['prompt'], $properties['namespace']);
   }
   $collection['COLLECTION_POLICY']->content = $policy->getXML();
   drupal_set_message(t('Updated collection policy'));
